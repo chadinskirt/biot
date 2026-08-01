@@ -20,8 +20,6 @@ namespace biot{
                     asio::buffer(self->buffer_.data(), BinarySerializer::packet_size),
                      [self](boost::system::error_code ec, std::size_t bytes){
                         if(ec)
-                            std::cout<< "Accept Fail:"
-                                     << ec.message();
                             return;
                         std::cout<< "Read" << bytes << "bytes\n";
                         packet_t packet = self->serializer_.deserialize(self->buffer_.data(), bytes);
