@@ -1,6 +1,5 @@
 #ifndef SERVER
 #define SERVER
-#include <iostream>
 #include <boost/asio.hpp>
 #include "packet.hpp"
 #include "biot.hpp"

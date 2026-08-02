@@ -30,7 +30,7 @@ namespace biot{
   };
   class BinarySerializer{
     public:
-      static constexpr std::size_t packet_size = 4 * sizeof(float) + 2 * sizeof(uint8_t);
+      static constexpr std::size_t packet_size = 5 * sizeof(float) + 1 * sizeof(uint8_t);
       packet_t deserialize(const uint8_t* data, std::size_t size);
       std::vector<uint8_t> serialize(const packet_t& p);
   };
