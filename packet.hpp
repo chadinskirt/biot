@@ -20,10 +20,10 @@ namespace biot{
     float roll;
     float pitch;
     float accel_jerk;
+    float velocity;
 
-    uint8_t motion_flag;
     uint8_t flag;
-    packet_t() : timestamp(0), accel_mag(0.0f), roll(0.0f), pitch(0.0f), motion_flag(0), flag(0){} 
+    packet_t() : timestamp(0), accel_mag(0.0f), roll(0.0f), pitch(0.0f), velocity(0), flag(0){} 
     static void set_flag(packet_t& p, flag_t event);
     static void clear_flag(packet_t& p, flag_t event);
     static bool is_valid(packet_t&p, flag_t event);
@@ -96,7 +96,7 @@ namespace biot{
     p.roll = reader.read<float>();
     p.pitch = reader.read<float>();
     p.accel_jerk = reader.read<float>();
-    p.motion_flag = reader.read<uint8_t>();
+    p.velocity = reader.read<float>();
     p.flag = reader.read<uint8_t>();
 
     return p;
@@ -108,7 +108,7 @@ namespace biot{
     writer.write_float(p.roll);
     writer.write_float(p.pitch);
     writer.write_float(p.accel_jerk);
-    writer.write_uint8_t(p.motion_flag);
+    writer.write_float(p.velocity);
     writer.write_uint8_t(p.flag);
 
     return writer.data();
