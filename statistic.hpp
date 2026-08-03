@@ -12,22 +12,24 @@ namespace biot{
         public:
             belief_t evaluate(const feature_t& feature){
                 belief_t b;
-                float accel_score = 0.6f * feature.accel_mag_var + 0.4f * feature.accel_mag_mean;
-                float jerk_score = 0.4f * feature.accel_jerk_mean + 0.6f * feature.jerk_var;
+                // variance after feeding normalize value give max 0.25 a prescaler * 4 brought it back to 0-1 
+                float accel_score = 0.4f * (feature.accel_mag_var * 4) + 0.6f * feature.accel_mag_mean;
+                float jerk_score = 0.4f * feature.accel_jerk_mean + 0.6f * (feature.jerk_var * 4);
 
-                float disagreement = std::abs(accel_score - jerk_score);
-                if(feature.accel_peak - accel_score >= 0.5 || feature.jerk_peak - jerk_score >= 0.5){
-                    b.unknow = 1.1f * disagreement;
+                b.unknow = std::clamp(std::abs(accel_score - jerk_score), 0.0f, 1.0f);
+                float crash_score = (0.6 * jerk_score + 0.4 * accel_score);
+
+                if(feature.accel_peak >= 0.8 && feature.jerk_peak >= 0.85){
+                    crash_score += 0.1;
+                }
+                else if(feature.accel_peak >= 0.8 || feature.jerk_peak >= 0.85){
+                    b.unknow += 0.1;
                 }
                 
-                if(feature.velocity_mean >= 15){
-                    b.unknow = 1.1f * disagreement;
-                }
-                else{
-                    b.unknow = 0.9f * disagreement;
+                if(feature.velocity_mean < 15 && crash_score > 0.5){
+                    b.unknow += 0.1;
                 }
                 //eg unknow 0.5 , crash : 0.7 -> crash: 0.35, stable: 0.15
-                float crash_score = (0.6 * jerk_score + 0.4 * accel_score);
                 float commited = 1 - b.unknow;
                 b.crash = crash_score * commited;
                 b.stable = (1-crash_score) * commited;
@@ -39,11 +41,17 @@ namespace biot{
         public:
             belief_t evaluate(const feature_t& feature){
                 belief_t b1;
-                float roll_score = 0.7 * feature.roll_mean + 0.3* feature.roll_var;
-                float pitch_score = 0.7 * feature.pitch_mean + 0.3* feature.pitch_var;
+                float roll_score = 0.7 * feature.roll_mean + 0.3* (feature.roll_var * 4);
+                float pitch_score = 0.7 * feature.pitch_mean + 0.3* (feature.pitch_var * 4);
                 
-                b1.unknow = std::abs(roll_score-pitch_score);
+                b1.unknow = std::clamp(std::abs(roll_score-pitch_score), 0.0f, 1.0f);
                 float crash_score = (0.6 * roll_score + 0.4 * pitch_score);
+                if(feature.roll_peak >= 0.8 && feature.jerk_peak >= 0.6){
+                    crash_score += 0.1;
+                }
+                else if(feature.roll_peak >= 0.8 || feature.pitch_peak >= 0.6){
+                    b1.unknow += 0.1;
+                }
                 float commited = 1 - b1.unknow;
                 b1.crash = crash_score * commited;
                 b1.stable = (1-crash_score) * commited;
