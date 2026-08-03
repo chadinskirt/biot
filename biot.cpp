@@ -1,13 +1,11 @@
 #include <iostream>
 #include <cassert>
-#include <boost/asio.hpp>
 #include <span>
 #include "biot.hpp"
 #include "packet.hpp"
-#include "server.hpp"
 #include <thread>
-namespace asio = boost::asio;
-using tcp = asio::ip::tcp;
+//namespace asio = boost::asio;
+//using tcp = asio::ip::tcp;
 
 void aggregate(const biot::WindowView<biot::packet_t>& view)
 {
@@ -24,7 +22,7 @@ void aggregate(const biot::WindowView<biot::packet_t>& view)
 }
 int main(){
     biot::BinarySerializer serializer;
-    biot::History time{500};
+    biot::History time{std::chrono::milliseconds{500}};
     biot::Slidding_window<biot::packet_t, biot::History> window(16, time);
     biot::packet_t packet;
     std::vector<uint8_t> bytes = {
@@ -33,6 +31,7 @@ int main(){
         0x55, 0x66, 0x77, 0x88,   // velocity
         0xAA                      // flag
     };
+    auto start = std::chrono::steady_clock::now();
     /*std::vector<uint8_t> bytes = {
         0x01, 0x02, 0x03, 0x04,   // tilt
         0x11, 0x22, 0x33, 0x44,   // accel
@@ -50,7 +49,7 @@ int main(){
 
     io.run();*/
     
-    packet = serializer.deserialize(bytes);
+    packet = serializer.deserialize( bytes.data() , serializer.packet_size);
     for ( auto& s: bytes){
         std::cout << s<< ' ';
     }
@@ -73,6 +72,9 @@ int main(){
     {
         if (window.ready() || !window.push(packet))
         {
+            auto trigger = std::chrono::steady_clock::now();
+            auto since_start = trigger - start;
+            std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(since_start).count() << '\n';
             auto view = window.view();
 
             aggregate(view);

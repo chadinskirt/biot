@@ -42,7 +42,8 @@ namespace biot{
         public:
             explicit History(std::chrono::milliseconds ms) : start_(std::chrono::steady_clock::now()), duration_(ms) {}
             template<typename T>
-            bool ready(const RingBuffer<T>& buffer) const;
+            bool ready(const RingBuffer<T>& buffer);
+            void reset();
     };
     template<typename T>
     class WindowView {
@@ -79,7 +80,7 @@ namespace biot{
         return buffer.size() >= count;
     }
     template<typename T>
-    inline bool History::ready(const RingBuffer<T>& buffer) const
+    inline bool History::ready(const RingBuffer<T>& buffer)
     {
         (void)buffer;
 
@@ -89,6 +90,9 @@ namespace biot{
             return true;
         };
         return false;
+    }
+    inline void History::reset(){
+        start_ = std::chrono::steady_clock::now();
     }
     template<typename T>
     std::size_t RingBuffer<T>::physical_index(std::size_t idx) const{
