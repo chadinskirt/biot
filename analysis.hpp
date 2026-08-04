@@ -62,7 +62,7 @@ namespace biot{
                 p.roll = std::clamp(roll_norm, 0.0f, 1.0f);
                 p.pitch = std::clamp(pitch_norm, 0.0f, 1.0f);
             }
-            feature_t extract(WindowView<const packet_t>& view){
+            feature_t extract(const biot::WindowView<biot::packet_t>& view){
                 Welford accel;
                 Welford jerk;
                 Welford roll;

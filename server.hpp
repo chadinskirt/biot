@@ -3,6 +3,8 @@
 #include <boost/asio.hpp>
 #include "packet.hpp"
 #include "biot.hpp"
+#include "analysis.hpp"
+#include "statistic.hpp"
 namespace asio = boost::asio;
 using tcp = asio::ip::tcp;
 
@@ -13,6 +15,10 @@ namespace biot{
             std::array<uint8_t,256> buffer_;
             std::function<void(packet_t)> handler_;
             BinarySerializer serializer_;
+            feature_t impact_f;
+            feature_t orient_f;
+            Analyzer analyze_;
+            ImpactEngine impact;
             void read(){
                 auto self = shared_from_this();
                 asio::async_read(socket_, 

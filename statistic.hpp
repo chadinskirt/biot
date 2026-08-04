@@ -13,26 +13,29 @@ namespace biot{
             belief_t evaluate(const feature_t& feature){
                 belief_t b;
                 // variance after feeding normalize value give max 0.25 a prescaler * 4 brought it back to 0-1 
-                float accel_score = 0.4f * (feature.accel_mag_var * 4) + 0.6f * feature.accel_mag_mean;
-                float jerk_score = 0.4f * feature.accel_jerk_mean + 0.6f * (feature.jerk_var * 4);
+                float accel_score = std::clamp(0.4f * (feature.accel_mag_var * 4) + 0.6f * feature.accel_mag_mean, 0.0f, 1.0f);
+                float jerk_score = std::clamp(0.4f * feature.accel_jerk_mean + 0.6f * (feature.jerk_var * 4),0.0f,1.0f);
 
                 b.unknow = std::clamp(std::abs(accel_score - jerk_score), 0.0f, 1.0f);
-                float crash_score = (0.6 * jerk_score + 0.4 * accel_score);
+                float crash_score = std::clamp(0.6f * jerk_score + 0.4f * accel_score, 0.0f, 1.0f);
 
-                if(feature.accel_peak >= 0.8 && feature.jerk_peak >= 0.85){
-                    crash_score += 0.1;
+                if(feature.accel_peak >= 0.8f && feature.jerk_peak >= 0.85f){
+                    crash_score = std::clamp(crash_score + 0.1f, 0.0f, 1.0f); // condition for modifier
                 }
-                else if(feature.accel_peak >= 0.8 || feature.jerk_peak >= 0.85){
-                    b.unknow += 0.1;
+                else if(feature.accel_peak >= 0.8f || feature.jerk_peak >= 0.85f){
+                    b.unknow += 0.1f;
                 }
                 
                 if(feature.velocity_mean < 15 && crash_score > 0.5){
-                    b.unknow += 0.1;
+                    b.unknow += 0.1f;
                 }
                 //eg unknow 0.5 , crash : 0.7 -> crash: 0.35, stable: 0.15
-                float commited = 1 - b.unknow;
-                b.crash = crash_score * commited;
-                b.stable = (1-crash_score) * commited;
+                float commited = 1.0f - b.unknow;
+                b.crash = std::clamp(crash_score * commited, 0.0f, 1.0f);
+                b.stable = std::clamp((1.0f-crash_score) * commited, 0.0f, 1.0f);
+
+                std::cout<<"crash: "<< b.crash << ' ' << "stable: "<< b.stable<< ' '<< "unknow: " << b.unknow << ' ' <<'\n';
+
                 return b;
             };
         };
@@ -55,6 +58,7 @@ namespace biot{
                 float commited = 1 - b1.unknow;
                 b1.crash = crash_score * commited;
                 b1.stable = (1-crash_score) * commited;
+
                 return b1;
             };
         };

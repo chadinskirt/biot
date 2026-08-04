@@ -14,16 +14,25 @@ namespace biot{
     CRASH = 1 << 1
   };
   struct packet_t{
-    uint32_t timestamp;
+    uint32_t timestamp{};
 
-    float accel_mag;
-    float roll;
-    float pitch;
-    float accel_jerk;
-    float velocity;
+    float accel_mag{};
+    float roll{};
+    float pitch{};
+    float accel_jerk{};
+    float velocity{};
 
-    uint8_t flag;
-    packet_t() : timestamp(0), accel_mag(0.0f), roll(0.0f), pitch(0.0f), velocity(0), flag(0){} 
+    uint8_t flag{}; 
+    packet_t() = default;
+    packet_t(float accel_mag,float roll,float pitch,float accel_jerk,float velocity,uint8_t flag) 
+             : timestamp(0), 
+          accel_mag(accel_mag),
+          roll(roll),
+          pitch(pitch),
+          accel_jerk(accel_jerk),
+          velocity(velocity),
+          flag(flag)
+    {}
     static void set_flag(packet_t& p, flag_t event);
     static void clear_flag(packet_t& p, flag_t event);
     static bool is_valid(packet_t&p, flag_t event);
