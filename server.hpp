@@ -28,7 +28,6 @@ namespace biot{
                      [self](boost::system::error_code ec, std::size_t bytes){
                         if(ec)
                             return;
-                        std::cout<< "Read" << bytes << "bytes\n";
                         packet_t packet = self->serializer_.deserialize(self->buffer_.data(), bytes);
                         self->analyze_.normalize(packet);
                         self->window.push(packet);
@@ -51,7 +50,6 @@ namespace biot{
                                 self->window.clear();
                             }
                         }
-                        std::cout << "Packet receive\n";
                         if(self->handler_)
                             self->handler_(packet);
                         self->read();
