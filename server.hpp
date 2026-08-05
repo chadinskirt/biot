@@ -34,7 +34,7 @@ namespace biot{
                         self->window.push(packet);
                         if (self->window.ready())
                         {
-                            if(window.size() == 0){
+                            if(self->window.size() == 0){
                                 std::cout<< "no available packet to consume";
                             }
                             else{
