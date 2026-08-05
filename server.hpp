@@ -34,17 +34,22 @@ namespace biot{
                         self->window.push(packet);
                         if (self->window.ready())
                         {
-                            //iterate through window
-                            auto view = self->window.view();
-                            //compute variance and value
-                            auto sensor_f = self->analyze_.extract(view);
-                            //statistic decision engine
-                            auto impact_belief = self->impact_.evaluate(sensor_f);
-                            auto orientation_belief = self->orientation_.evaluate(sensor_f);
-                            //fusion output
-                            self->fusion_.combine(impact_belief, orientation_belief);
-                            //clear window after finish work
-                            self->window.clear();
+                            if(window.size() == 0){
+                                std::cout<< "no available packet to consume";
+                            }
+                            else{
+                                //iterate through window
+                                auto view = self->window.view();
+                                //compute variance and value
+                                auto sensor_f = self->analyze_.extract(view);
+                                //statistic decision engine
+                                auto impact_belief = self->impact_.evaluate(sensor_f);
+                                auto orientation_belief = self->orientation_.evaluate(sensor_f);
+                                //fusion output
+                                self->fusion_.combine(impact_belief, orientation_belief);
+                                //clear window after finish work
+                                self->window.clear();
+                            }
                         }
                         std::cout << "Packet receive\n";
                         if(self->handler_)
