@@ -15,10 +15,12 @@ namespace biot{
             std::array<uint8_t,256> buffer_;
             std::function<void(packet_t)> handler_;
             BinarySerializer serializer_;
-            feature_t impact_f;
-            feature_t orient_f;
             Analyzer analyze_;
-            ImpactEngine impact;
+            ImpactEngine impact_;
+            OrientationEngine orientation_;
+            FusionEngine fusion_;
+            biot::History time_;
+            biot::Slidding_window<biot::packet_t, biot::History> window;
             void read(){
                 auto self = shared_from_this();
                 asio::async_read(socket_, 
@@ -28,6 +30,23 @@ namespace biot{
                             return;
                         std::cout<< "Read" << bytes << "bytes\n";
                         packet_t packet = self->serializer_.deserialize(self->buffer_.data(), bytes);
+                        self->analyze_.normalize(packet);
+                        self->window.push(packet);
+                        if (self->window.ready())
+                        {
+                            //iterate through window
+                            auto view = self->window.view();
+                            //compute variance and value
+                            auto sensor_f = self->analyze_.extract(view);
+                            //statistic decision engine
+                            auto impact_belief = self->impact_.evaluate(sensor_f);
+                            auto orientation_belief = self->orientation_.evaluate(sensor_f);
+                            //fusion output
+                            self->fusion_.combine(impact_belief, orientation_belief);
+                            //clear window after finish work
+                            self->window.clear();
+                        }
+                        std::cout << "Packet receive\n";
                         if(self->handler_)
                             self->handler_(packet);
                         self->read();
@@ -35,7 +54,7 @@ namespace biot{
                 );
             }
         public:
-            Receiver(tcp::socket socket) : socket_(std::move(socket)) {}
+            Receiver(tcp::socket socket) : socket_(std::move(socket)), time_(std::chrono::milliseconds{500}) , window(16, time_) {}
             void on_packet(std::function<void(packet_t)> handler){
                 handler_ = std::move(handler);
             }
@@ -56,14 +75,13 @@ namespace biot{
                         auto receiver = std::make_shared<Receiver>(std::move(socket));
                         receiver->on_packet([](packet_t p){
                             // process workflow
-                            std::cout << "Packet receive\n";
                         });
                         receiver->start();
                     }
                     start_accept();
                 }
             );
-            };
+        };
         public:
             Server(asio::io_context& io) : accept_(io, tcp::endpoint(tcp::v4(),5050)){
                 std::cout<< "server started\n";

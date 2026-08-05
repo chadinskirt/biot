@@ -102,9 +102,9 @@ namespace biot{
         ).count()
     ); //cast base uint32_t static by ms of the time happen since last epoch and extract value via count()
     p.accel_mag = reader.read<float>();
+    p.accel_jerk = reader.read<float>();
     p.roll = reader.read<float>();
     p.pitch = reader.read<float>();
-    p.accel_jerk = reader.read<float>();
     p.velocity = reader.read<float>();
     p.flag = reader.read<uint8_t>();
 
@@ -114,9 +114,9 @@ namespace biot{
   std::vector<uint8_t> BinarySerializer::serialize(const packet_t& p){
     ByteWriter writer;
     writer.write_float(p.accel_mag);
+    writer.write_float(p.accel_jerk);
     writer.write_float(p.roll);
     writer.write_float(p.pitch);
-    writer.write_float(p.accel_jerk);
     writer.write_float(p.velocity);
     writer.write_uint8_t(p.flag);
 

@@ -13,7 +13,7 @@ namespace biot{
             belief_t evaluate(const feature_t& feature){
                 belief_t b;
                 // variance after feeding normalize value give max 0.25 a prescaler * 4 brought it back to 0-1 
-                float accel_score = std::clamp(0.4f * (feature.accel_mag_var * 4) + 0.6f * feature.accel_mag_mean, 0.0f, 1.0f);
+                float accel_score = std::clamp(0.4f * (feature.accel_mag_var * 4.0f) + 0.6f * feature.accel_mag_mean, 0.0f, 1.0f);
                 float jerk_score = std::clamp(0.4f * feature.accel_jerk_mean + 0.6f * (feature.jerk_var * 4),0.0f,1.0f);
 
                 b.unknow = std::clamp(std::abs(accel_score - jerk_score), 0.0f, 1.0f);
@@ -34,7 +34,7 @@ namespace biot{
                 b.crash = std::clamp(crash_score * commited, 0.0f, 1.0f);
                 b.stable = std::clamp((1.0f-crash_score) * commited, 0.0f, 1.0f);
 
-                std::cout<<"crash: "<< b.crash << ' ' << "stable: "<< b.stable<< ' '<< "unknow: " << b.unknow << ' ' <<'\n';
+//              std::cout<<"crash: "<< b.crash << ' ' << "stable: "<< b.stable<< ' '<< "unknow: " << b.unknow << ' ' <<'\n';//
 
                 return b;
             };
@@ -44,20 +44,20 @@ namespace biot{
         public:
             belief_t evaluate(const feature_t& feature){
                 belief_t b1;
-                float roll_score = 0.7 * feature.roll_mean + 0.3* (feature.roll_var * 4);
-                float pitch_score = 0.7 * feature.pitch_mean + 0.3* (feature.pitch_var * 4);
+                float roll_score = std::clamp(0.7f * feature.roll_mean + 0.3f * (feature.roll_var * 4.0f), 0.0f, 1.0f);
+                float pitch_score = std::clamp(0.7f * feature.pitch_mean + 0.3f * (feature.pitch_var * 4),0.0f,1.0f);
                 
                 b1.unknow = std::clamp(std::abs(roll_score-pitch_score), 0.0f, 1.0f);
-                float crash_score = (0.6 * roll_score + 0.4 * pitch_score);
-                if(feature.roll_peak >= 0.8 && feature.jerk_peak >= 0.6){
-                    crash_score += 0.1;
+                float crash_score = std::clamp((0.6f * roll_score + 0.4f * pitch_score), 0.0f, 1.0f);
+                if(feature.roll_peak >= 0.8f && feature.jerk_peak >= 0.6f){
+                    crash_score = std::clamp(crash_score + 0.1f, 0.0f, 1.0f);
                 }
-                else if(feature.roll_peak >= 0.8 || feature.pitch_peak >= 0.6){
-                    b1.unknow += 0.1;
+                else if(feature.roll_peak >= 0.8f || feature.pitch_peak >= 0.6f){
+                    b1.unknow += 0.1f;
                 }
-                float commited = 1 - b1.unknow;
-                b1.crash = crash_score * commited;
-                b1.stable = (1-crash_score) * commited;
+                float commited = 1.0f - b1.unknow;
+                b1.crash = std::clamp(crash_score * commited, 0.0f, 1.0f);
+                b1.stable = std::clamp((1.0f-crash_score) * commited, 0.0f, 1.0f);
 
                 return b1;
             };
@@ -94,7 +94,8 @@ namespace biot{
                 // sigma A intersect B give unknow only one case 
                 out.unknow =
                     (impact.unknow * orientation.unknow) / denom;
-
+                    
+                std::cout<< "unknow: " << out.unknow << '\n'<< "crash: " << out.crash << '\n' << "stable: " << out.stable << '\n';
                 return out;
             };
     };
