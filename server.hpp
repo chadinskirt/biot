@@ -14,6 +14,8 @@ namespace biot{
             asio::ip::tcp::socket socket_;
             std::array<uint8_t,256> buffer_;
             std::function<void(packet_t)> handler_;
+            std::queue<std::vector<uint8_t>> tx_queue_;
+            bool writing_ = false;
             BinarySerializer serializer_;
             Analyzer analyze_;
             ImpactEngine impact_;
@@ -22,16 +24,18 @@ namespace biot{
             biot::History time_;
             biot::Slidding_window<biot::packet_t, biot::History> window;
             void read(){
+                // persistent lifetime via global sharing ptr
                 auto self = shared_from_this();
                 asio::async_read(socket_, 
                     asio::buffer(self->buffer_.data(), BinarySerializer::packet_size),
                      [self](boost::system::error_code ec, std::size_t bytes){
                         if(ec)
+                            tx_queue.pop(); // pop tx_queue if there an error
                             return;
                         packet_t packet = self->serializer_.deserialize(self->buffer_.data(), bytes);
+                        uint8_t last_flag_ = NONE;
                         self->analyze_.normalize(packet);
-                        self->window.push(packet);
-                        if (self->window.ready())
+                        if (!self->window.push(packet) || self->window.ready() )
                         {
                             if(self->window.size() == 0){
                                 std::cout<< "no available packet to consume";
@@ -45,7 +49,17 @@ namespace biot{
                                 auto impact_belief = self->impact_.evaluate(sensor_f);
                                 auto orientation_belief = self->orientation_.evaluate(sensor_f);
                                 //fusion output
-                                self->fusion_.combine(impact_belief, orientation_belief);
+                                self->fusion_.combine(impact_belief, orientation_belief, packet);
+                                // used one of packet_t flag for bool checking to activate async_write
+                                if (packet.flag == CRASH_WARNING && !self->last_flag_)
+                                {
+                                    event_packet_t event;
+                                    event.seq = self->event_seq_++;
+                                    event.flag = packet.flag;
+
+                                    self->send_event(event);
+                                    self->last_flag_ = true;
+                                }
                                 //clear window after finish work
                                 self->window.clear();
                             }
@@ -56,6 +70,33 @@ namespace biot{
                     }
                 );
             }
+            void write_next(){
+                if (writing_ || tx_queue_.empty())
+                    return;
+                // flag checker
+                writing_ = true;
+
+                auto self = shared_from_this();
+
+                asio::async_write(
+                    socket_,
+                    asio::buffer(tx_queue_.front()),
+                    [self](boost::system::error_code ec, std::size_t bytes)
+                    {
+                        self->writing_ = false;
+
+                        if (ec)
+                            return;
+
+                        self->tx_queue_.pop();
+
+                        self->write_next();
+                    });
+            }
+            void send_event(const event_packet_t& event){
+                serializer_.serialize(event, tx_queue_);
+                write_next();
+            }
         public:
             Receiver(tcp::socket socket) : socket_(std::move(socket)), time_(std::chrono::milliseconds{500}) , window(16, time_) {}
             void on_packet(std::function<void(packet_t)> handler){
@@ -64,7 +105,6 @@ namespace biot{
             void start(){
                 read();
             }
-
     };
     class Server{
         private:
@@ -75,7 +115,9 @@ namespace biot{
                 {
                     if (!ec){
                         std::cout<< "client connected\n";
+                        // passing socket to shared Receiver obj
                         auto receiver = std::make_shared<Receiver>(std::move(socket));
+                        // handler for async_read not used it yet
                         receiver->on_packet([](packet_t p){
                             // process workflow
                         });

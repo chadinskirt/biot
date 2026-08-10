@@ -1,6 +1,7 @@
 #ifndef statistic
 #define statistic
 #include "analysis.hpp"
+#include "packet.hpp"
 #include <cmath>
 namespace biot{
     struct belief_t{
@@ -68,7 +69,7 @@ namespace biot{
         public:
             belief_t combine(
                 const belief_t& impact,
-                const belief_t& orientation
+                const belief_t& orientation, packet_t& p
             ){
                 // sigma of A intersect B give conflict/empty
                 float K =
@@ -86,16 +87,32 @@ namespace biot{
                     impact.unknow * orientation.crash) / denom;
                 
                 // sigma A intersect B give stable
-                out.stable =
+                /*out.stable =
                     (impact.stable * orientation.stable +
                     impact.stable * orientation.unknow +
-                    impact.unknow * orientation.stable) / denom;
+                    impact.unknow * orientation.stable) / denom;*/
                 
                 // sigma A intersect B give unknow only one case 
                 out.unknow =
                     (impact.unknow * orientation.unknow) / denom;
-                    
-                std::cout<< "unknow: " << out.unknow << '\n'<< "crash: " << out.crash << '\n' << "stable: " << out.stable << '\n';
+
+                out.stable = 1- out.unknow - out.crash
+                float sum = out.crash + out.stable + out.unknow;
+
+                //debug output
+                if(std::abs(sum- 1.0f) < 0.001f){
+                        std::cout << "Fusion invariant violated: " << sum << '\n';
+                }
+                else{
+                    std::cout<< "unknow: " << out.unknow << '\n'<< "crash: " << out.crash << '\n' << "stable: " << out.stable << '\n';
+                }
+                auto event = CRASH_WARNING;
+                if(out.crash >= 0.75f){
+                    p.set_flag(event);
+                    if(!is_valid(event)){
+                        std::cout<< "Error: cannot update packet" << '\n';
+                    }
+                }
                 return out;
             };
     };

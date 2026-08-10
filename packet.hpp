@@ -22,26 +22,32 @@ namespace biot{
     float accel_jerk{};
     float velocity{};
 
+    uint16_t seq{};
     uint8_t flag{}; 
     packet_t() = default;
-    packet_t(float accel_mag,float roll,float pitch,float accel_jerk,float velocity,uint8_t flag) 
+    packet_t(float accel_mag,float roll,float pitch,float accel_jerk,float velocity,uit16_t seq, uint8_t flag) 
              : timestamp(0), 
           accel_mag(accel_mag),
           roll(roll),
           pitch(pitch),
           accel_jerk(accel_jerk),
           velocity(velocity),
+          seq(seq)
           flag(flag)
     {}
-    static void set_flag(packet_t& p, flag_t event);
-    static void clear_flag(packet_t& p, flag_t event);
-    static bool is_valid(packet_t&p, flag_t event);
+    void set_flag(flag_t event);
+    void clear_flag(flag_t event);
+    bool is_valid(flag_t event);
   };
+  struct event_packet_t{
+    uint8_t seq{};
+    uint8_t flag{};
+  }
   class BinarySerializer{
     public:
       static constexpr std::size_t packet_size = 5 * sizeof(float) + 1 * sizeof(uint8_t);
       packet_t deserialize(const uint8_t* data, std::size_t size);
-      std::vector<uint8_t> serialize(const packet_t& p);
+      void serialize(const packet_t& p, std::queue<std::vector<uint8_t>& queue);
   };
   class ByteWriter{
     private:
@@ -50,6 +56,7 @@ namespace biot{
       void write_float(float value);
       void write_uint8_t(uint8_t value);
       const std::vector<uint8_t>& data() const;
+      void move_to(std::queue<std::vector<uint8_t>& queue);
   };
   class ByteReader{
     private:
@@ -62,19 +69,23 @@ namespace biot{
       T read();
       void reset(const uint8_t* data, std::size_t size);
   };
-  static void set_flag(packet_t& p, flag_t event){
+  void set_flag(flag_t event){
     p.flag |= static_cast<uint8_t>(event);
   };
-  static void clear_flag(packet_t& p, flag_t event){
+  void clear_flag(flag_t event){
     p.flag &= ~static_cast<uint8_t>(event);
   };
-  static bool is_valid(packet_t&p, flag_t event){
+  bool is_valid(flag_t event){
     return (p.flag & static_cast<uint8_t>(event)) != 0;
   };
-  void ByteWriter::write_float(float value){
+  void ByteWriter::write_uint32_t(uint32_t value){
     uint8_t* ptr = reinterpret_cast<uint8_t*>(&value);
-    buffer.insert(buffer.end(), ptr, ptr + sizeof(float));
+    buffer.insert(buffer.end(), ptr, ptr + sizeof(uint32_t));
   }
+  void ByteWriter::move_to(std::queue<std::vector<uint8_t>& queue){
+      queue.push(std::move(buffer));
+      buffer.clear();
+  };
   void ByteWriter::write_uint8_t(uint8_t value){
     buffer.push_back(value);
   }
@@ -106,21 +117,18 @@ namespace biot{
     p.roll = reader.read<float>();
     p.pitch = reader.read<float>();
     p.velocity = reader.read<float>();
+    p.seq = reader.read<uint16_t>();
     p.flag = reader.read<uint8_t>();
 
     return p;
   }
 
-  std::vector<uint8_t> BinarySerializer::serialize(const packet_t& p){
+  void BinarySerializer::serialize(const event_packet_t& p, std::queue<std::vector<uint8_t>& queue){
     ByteWriter writer;
-    writer.write_float(p.accel_mag);
-    writer.write_float(p.accel_jerk);
-    writer.write_float(p.roll);
-    writer.write_float(p.pitch);
-    writer.write_float(p.velocity);
+    writer.write_uint8_t(p.seq);
     writer.write_uint8_t(p.flag);
 
-    return writer.data();
+    writer.move_to(queue);
   };
   void ByteReader::reset(const uint8_t* data, std::size_t size){
     data_ = data;
