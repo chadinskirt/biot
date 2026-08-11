@@ -96,11 +96,11 @@ namespace biot{
                 out.unknow =
                     (impact.unknow * orientation.unknow) / denom;
 
-                out.stable = 1- out.unknow - out.crash
+                out.stable = 1- out.unknow - out.crash;
                 float sum = out.crash + out.stable + out.unknow;
 
                 //debug output
-                if(std::abs(sum- 1.0f) < 0.001f){
+                if(std::abs(sum- 1.0f) > 0.001f){
                         std::cout << "Fusion invariant violated: " << sum << '\n';
                 }
                 else{
@@ -108,8 +108,8 @@ namespace biot{
                 }
                 auto event = CRASH_WARNING;
                 if(out.crash >= 0.75f){
-                    p.set_flag(event);
-                    if(!is_valid(event)){
+                    p.set_flag(event, p);
+                    if(!p.is_valid(event, p)){
                         std::cout<< "Error: cannot update packet" << '\n';
                     }
                 }

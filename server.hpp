@@ -23,6 +23,8 @@ namespace biot{
             FusionEngine fusion_;
             biot::History time_;
             biot::Slidding_window<biot::packet_t, biot::History> window;
+            uint8_t last_flag_ = NONE;
+            event_packet_t event;
             void read(){
                 // persistent lifetime via global sharing ptr
                 auto self = shared_from_this();
@@ -30,10 +32,8 @@ namespace biot{
                     asio::buffer(self->buffer_.data(), BinarySerializer::packet_size),
                      [self](boost::system::error_code ec, std::size_t bytes){
                         if(ec)
-                            tx_queue.pop(); // pop tx_queue if there an error
                             return;
                         packet_t packet = self->serializer_.deserialize(self->buffer_.data(), bytes);
-                        uint8_t last_flag_ = NONE;
                         self->analyze_.normalize(packet);
                         if (!self->window.push(packet) || self->window.ready() )
                         {
@@ -53,11 +53,10 @@ namespace biot{
                                 // used one of packet_t flag for bool checking to activate async_write
                                 if (packet.flag == CRASH_WARNING && !self->last_flag_)
                                 {
-                                    event_packet_t event;
-                                    event.seq = self->event_seq_++;
-                                    event.flag = packet.flag;
+                                    self->event.seq++;
+                                    self->event.flag = packet.flag;
 
-                                    self->send_event(event);
+                                    self->send_event(self->event);
                                     self->last_flag_ = true;
                                 }
                                 //clear window after finish work
